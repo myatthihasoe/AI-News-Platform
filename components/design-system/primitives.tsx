@@ -90,18 +90,27 @@ export type BiasBreakdown = {
 type BiasMeterProps = BiasBreakdown & {
   compact?: boolean;
   showScale?: boolean;
+  labelMode?: "full" | "short";
 };
 
-export function BiasMeter({ left, center, right, compact = false, showScale = true }: BiasMeterProps) {
+export function BiasMeter({
+  left,
+  center,
+  right,
+  compact = false,
+  showScale = true,
+  labelMode = "full",
+}: BiasMeterProps) {
   const total = left + center + right || 1;
   const summary = `AI-estimated political framing: ${left}% left, ${center}% center, ${right}% right.`;
+  const leftLabel = labelMode === "short" ? "L" : "Left";
 
   return (
     <div className={`${styles.meter} ${compact ? styles.meterCompact : ""}`}>
       <span className={styles.srOnly}>{summary}</span>
       <div className={styles.meterTrack} aria-hidden="true">
         <span className={styles.meterLeft} style={{ flexGrow: left / total }}>
-          Left {left}%
+          {leftLabel} {left}%
         </span>
         <span className={styles.meterCenter} style={{ flexGrow: center / total }}>
           Center {center}%
