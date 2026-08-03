@@ -5,7 +5,11 @@ import styles from "./home.module.css";
 
 const navItems = ["For You", "Local", "Blindspot"] as const;
 
-export function HomeHeader() {
+type HomeHeaderProps = {
+  homeActive?: boolean;
+};
+
+export function HomeHeader({ homeActive = true }: HomeHeaderProps) {
   return (
     <header>
       <div className={styles.utilityBar}>
@@ -40,7 +44,13 @@ export function HomeHeader() {
             <BrandMark compact />
           </Link>
           <nav className={styles.primaryNav} aria-label="Primary navigation">
-            <Link className={styles.activeNavItem} href="#top-news" aria-current="page">Home</Link>
+            <Link
+              className={homeActive ? styles.activeNavItem : styles.navItem}
+              href="/"
+              aria-current={homeActive ? "page" : undefined}
+            >
+              Home
+            </Link>
             {navItems.map((item) => (
               <button className={styles.navItem} type="button" key={item}>
                 {item}

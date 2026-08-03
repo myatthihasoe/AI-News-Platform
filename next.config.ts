@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
         hostname: "images.unsplash.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "commons.wikimedia.org",
+        pathname: "/wiki/Special:FilePath/**",
+      },
     ],
   },
 };

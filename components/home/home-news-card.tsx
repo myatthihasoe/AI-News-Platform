@@ -1,34 +1,33 @@
 import Image from "next/image";
+import Link from "next/link";
 import { BiasMeter } from "@/components/design-system/primitives";
 import { Icon } from "@/components/design-system/icons";
+import type { HomeArticle } from "@/lib/news/preview-articles";
 import styles from "./home.module.css";
 
-export type HomeArticle = {
-  id: string;
-  category: string;
-  region: string;
-  title: string;
-  imageUrl: string;
-  imageAlt: string;
-  left: number;
-  center: number;
-  right: number;
-  sourceCount: number;
-};
+export type { HomeArticle } from "@/lib/news/preview-articles";
 
 type HomeNewsCardProps = {
   article: HomeArticle;
 };
 
 export function HomeNewsCard({ article }: HomeNewsCardProps) {
-  const total = article.left + article.center + article.right;
-
-  if (total !== 100) {
-    throw new Error(`Framing percentages for article ${article.id} must sum to 100.`);
-  }
+  const content = <CardContent article={article} />;
 
   return (
     <article className={styles.newsCard}>
+      {article.href ? (
+        <Link className={styles.cardLink} href={article.href} aria-label={`Read ${article.title}`}>
+          {content}
+        </Link>
+      ) : content}
+    </article>
+  );
+}
+
+function CardContent({ article }: HomeNewsCardProps) {
+  return (
+    <>
       <div className={styles.cardMedia}>
         <Image
           alt={article.imageAlt}
@@ -57,6 +56,6 @@ export function HomeNewsCard({ article }: HomeNewsCardProps) {
         </div>
         <p className={styles.sourceCount}>{article.sourceCount} {article.sourceCount === 1 ? "source" : "sources"}</p>
       </div>
-    </article>
+    </>
   );
 }
