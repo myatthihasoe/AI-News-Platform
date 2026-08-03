@@ -162,10 +162,12 @@
 .footerBrand p { margin: 16px 0 0; color: #d4d5d7; font-size: 10px; line-height: 1.55; }
 .footerColumn h2 { margin: 0 0 10px; font-size: 11px; font-weight: 600; }
 .footerColumn ul { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
-.footerColumn a { color: #d7d8da; font-size: 10px; text-decoration: none; }
+.footerColumn a,
+.footerColumn span { color: #d7d8da; font-size: 10px; text-decoration: none; }
 .footerColumn a:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
 .socialLinks { display: flex; align-items: center; gap: 18px; }
-.socialLinks a { display: grid; width: 26px; height: 26px; place-items: center; color: #fff; }
+.socialLinks a,
+.socialLinks span { display: grid; width: 26px; height: 26px; place-items: center; color: #fff; }
 .copyright { min-height: 36px; padding-block: 11px; border-top: 1px solid #45474b; color: #c3c4c6; font-size: 9px; }
 
 @media (max-width: 900px) {

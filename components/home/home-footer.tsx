@@ -2,9 +2,21 @@ import { BrandMark } from "@/components/design-system/primitives";
 import { Icon, type IconName } from "@/components/design-system/icons";
 import styles from "./home.module.css";
 
-const companyLinks = ["About", "Careers", "Press", "Contact"] as const;
-const helpLinks = ["Help Center", "Guides", "Privacy Policy", "Terms of Service"] as const;
-const socialLinks: Array<{ label: string; icon: IconName }> = [
+type FooterLink = { label: string; href?: string };
+
+const companyLinks: readonly FooterLink[] = [
+  { label: "About" },
+  { label: "Careers" },
+  { label: "Press" },
+  { label: "Contact" },
+];
+const helpLinks: readonly FooterLink[] = [
+  { label: "Help Center" },
+  { label: "Guides" },
+  { label: "Privacy Policy" },
+  { label: "Terms of Service" },
+];
+const socialLinks: ReadonlyArray<{ label: string; icon: IconName; href?: string }> = [
   { label: "X", icon: "x" },
   { label: "LinkedIn", icon: "linkedin" },
   { label: "Instagram", icon: "instagram" },
@@ -25,9 +37,15 @@ export function HomeFooter() {
           <h2>Connect</h2>
           <div className={styles.socialLinks}>
             {socialLinks.map((social) => (
-              <a href="#top-news" key={social.label} aria-label={`Biasly on ${social.label}`}>
-                <Icon name={social.icon} size={17} />
-              </a>
+              social.href ? (
+                <a href={social.href} key={social.label} aria-label={`Biasly on ${social.label}`}>
+                  <Icon name={social.icon} size={17} />
+                </a>
+              ) : (
+                <span key={social.label} role="img" aria-label={`Biasly on ${social.label}`}>
+                  <Icon name={social.icon} size={17} />
+                </span>
+              )
             ))}
           </div>
         </div>
@@ -41,7 +59,7 @@ export function HomeFooter() {
 
 type FooterLinksProps = {
   title: string;
-  links: readonly string[];
+  links: readonly FooterLink[];
 };
 
 function FooterLinks({ title, links }: FooterLinksProps) {
@@ -49,7 +67,11 @@ function FooterLinks({ title, links }: FooterLinksProps) {
     <div className={styles.footerColumn}>
       <h2>{title}</h2>
       <ul>
-        {links.map((link) => <li key={link}><a href="#top-news">{link}</a></li>)}
+        {links.map((link) => (
+          <li key={link.label}>
+            {link.href ? <a href={link.href}>{link.label}</a> : <span>{link.label}</span>}
+          </li>
+        ))}
       </ul>
     </div>
   );

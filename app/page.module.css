@@ -3,7 +3,7 @@
 .heading { margin: 0 0 16px; font-size: 25px; font-weight: 600; line-height: 1.25; letter-spacing: -0.035em; }
 .newsGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 24px; }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .newsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
