@@ -13,7 +13,13 @@ export type IconName =
   | "bell"
   | "sliders"
   | "check"
-  | "more";
+  | "more"
+  | "globe"
+  | "chevron-down"
+  | "x"
+  | "linkedin"
+  | "instagram"
+  | "youtube";
 
 type IconProps = {
   name: IconName;
@@ -38,6 +44,12 @@ export function Icon({ name, size = 24, className }: IconProps) {
     sliders: <><path d="M4 6h5M13 6h7" /><circle cx="11" cy="6" r="2" /><path d="M4 12h9M17 12h3" /><circle cx="15" cy="12" r="2" /><path d="M4 18h3M11 18h9" /><circle cx="9" cy="18" r="2" /></>,
     check: <><circle cx="12" cy="12" r="9" /><path d="m8 12 2.5 2.5L16 9" /></>,
     more: <><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" /></>,
+    globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></>,
+    "chevron-down": <path d="m8 10 4 4 4-4" />,
+    x: <><path d="M5 4.5 19 19.5" /><path d="M19 4.5 5 19.5" /></>,
+    linkedin: <><path d="M7 9v10M7 5.5v.01M11 19v-6a4 4 0 0 1 8 0v6M11 9v10" /></>,
+    instagram: <><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><path d="M17.5 6.5h.01" /></>,
+    youtube: <><rect x="2.5" y="5.5" width="19" height="13" rx="4" /><path d="m10 9 5 3-5 3Z" /></>,
   };
 
   return (
