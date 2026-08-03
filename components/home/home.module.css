@@ -94,6 +94,12 @@
 .subscribeButton:hover { background: #303237; }
 .loginButton { border: 1px solid #777a80; background: transparent; color: #141518; }
 .loginButton:hover { background: #fff; }
+.userButtonSlot {
+  display: grid;
+  min-width: 42px;
+  min-height: 39px;
+  place-items: center;
+}
 
 .categoryRail {
   min-height: 45px;
@@ -200,6 +206,7 @@
   .headerActions { gap: 7px; }
   .subscribeButton { display: none; }
   .loginButton { min-width: 68px; min-height: 34px; padding: 7px 13px; }
+  .userButtonSlot { min-width: 36px; min-height: 34px; }
   .categoryRail,
   .categoryScroller { min-height: 43px; }
   .cardContent { min-height: 150px; }
