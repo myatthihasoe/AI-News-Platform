@@ -14,13 +14,22 @@ type MeterRowProps = {
 
 export function AnalysisSidebar({ article }: AnalysisSidebarProps) {
   const confidence = Math.round(article.analysis.confidence * 100);
+  const framingLabel = article.analysis.framingLabel;
+  const framingPercentage = getFramingPercentage(article);
+  const framingClass = {
+    left: styles.overallBiasLeft,
+    center: styles.overallBiasCenter,
+    right: styles.overallBiasRight,
+    mixed: styles.overallBiasMixed,
+    unclear: styles.overallBiasMixed,
+  }[framingLabel];
 
   return (
     <aside className={styles.sidebar} aria-label="AI article analysis">
       <section className={styles.analysisCard} aria-labelledby="bias-analysis-heading">
         <PanelHeading id="bias-analysis-heading">Bias Analysis</PanelHeading>
         <p className={styles.overline}>AI-estimated overall framing</p>
-        <p className={styles.overallBias}>{capitalize(article.analysis.framingLabel)} {article.right}%</p>
+        <p className={`${styles.overallBias} ${framingClass}`}>{capitalize(framingLabel)} {framingPercentage}%</p>
         <p className={styles.basedOn}>Based on {article.sourceCount} balanced sources</p>
         <div className={styles.analysisDivider} />
         <div className={styles.meterRows}>
@@ -114,4 +123,17 @@ function MeterRow({ label, value, count }: MeterRowProps) {
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function getFramingPercentage(article: NewsArticleDetail) {
+  switch (article.analysis.framingLabel) {
+    case "left":
+      return article.left;
+    case "center":
+      return article.center;
+    case "right":
+      return article.right;
+    default:
+      return Math.max(article.left, article.center, article.right);
+  }
 }

@@ -1,0 +1,27 @@
+.page {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.main {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  padding: 64px 24px 72px;
+}
+
+.authContainer {
+  width: min(100%, 420px);
+}
+
+.page > footer {
+  margin-top: 0;
+}
+
+@media (max-width: 640px) {
+  .main {
+    align-items: start;
+    padding: 40px 14px 52px;
+  }
+}

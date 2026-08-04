@@ -99,7 +99,11 @@
 .panelHeading h2 { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.15; letter-spacing: -.035em; }
 .panelHeading svg { flex: 0 0 auto; color: #2f3237; }
 .overline { margin: 0 0 5px; font-size: 9px; font-weight: 600; line-height: 1.25; }
-.overallBias { margin: 0; color: #16498f; font-size: 19px; font-weight: 600; line-height: 1.1; letter-spacing: -.03em; }
+.overallBias { margin: 0; font-size: 19px; font-weight: 600; line-height: 1.1; letter-spacing: -.03em; }
+.overallBiasLeft { color: #9e1018; }
+.overallBiasCenter { color: #4f5258; }
+.overallBiasRight { color: #16498f; }
+.overallBiasMixed { color: #30343a; }
 .basedOn { margin: 5px 0 0; color: #24548f; font-size: 8.5px; line-height: 1.35; }
 .analysisDivider { height: 1px; margin: 15px 0 12px; background: #d7d8da; }
 .meterRows { display: grid; gap: 12px; }

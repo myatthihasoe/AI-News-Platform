@@ -1,3 +1,4 @@
+import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { BrandMark } from "@/components/design-system/primitives";
 import { Icon } from "@/components/design-system/icons";
@@ -60,7 +61,29 @@ export function HomeHeader({ homeActive = true }: HomeHeaderProps) {
           </nav>
           <div className={styles.headerActions}>
             <button className={styles.subscribeButton} type="button">Subscribe</button>
-            <button className={styles.loginButton} type="button">Login</button>
+            <Show when="signed-out">
+              <SignInButton mode="redirect">
+                <button className={styles.loginButton} type="button">Login</button>
+              </SignInButton>
+            </Show>
+            <Show when="signed-in">
+              <div className={styles.userButtonSlot}>
+                <UserButton
+                  appearance={{
+                    elements: {
+                      userButtonTrigger: {
+                        borderRadius: "9999px",
+                        outlineOffset: "3px",
+                      },
+                      userButtonAvatarBox: {
+                        width: "36px",
+                        height: "36px",
+                      },
+                    },
+                  }}
+                />
+              </div>
+            </Show>
           </div>
         </div>
       </div>
