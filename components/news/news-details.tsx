@@ -3,17 +3,19 @@ import { BiasMeter } from "@/components/design-system/primitives";
 import { Icon } from "@/components/design-system/icons";
 import { HomeFooter } from "@/components/home/home-footer";
 import { HomeHeader } from "@/components/home/home-header";
-import type { NewsArticleDetail } from "@/lib/news/preview-articles";
+import type { ArticleDetail } from "@/lib/supabase/dto";
 import { AnalysisSidebar } from "./analysis-panel";
 import { NewsletterBanner } from "./newsletter-banner";
-import { RelatedStoryCard } from "./related-story-card";
 import styles from "./news-details.module.css";
 
 type NewsDetailsProps = {
-  article: NewsArticleDetail;
+  article: ArticleDetail;
 };
 
 export function NewsDetails({ article }: NewsDetailsProps) {
+  const publishedLabel = formatDate(article.publishedAt);
+  const eyebrow = [article.category, article.region].filter(Boolean).join(" · ") || article.source.name;
+
   return (
     <div className={styles.page}>
       <HomeHeader homeActive={false} />
@@ -22,17 +24,19 @@ export function NewsDetails({ article }: NewsDetailsProps) {
         <div className={styles.contentGrid}>
           <article className={styles.article}>
             <header className={styles.articleHeader}>
-              <p className={styles.eyebrow}>
-                {article.category}<span aria-hidden="true"> · </span>{article.region}
-              </p>
+              <p className={styles.eyebrow}>{eyebrow}</p>
               <h1>{article.title}</h1>
               <div className={styles.articleMetaRow}>
                 <div className={styles.articleMeta}>
-                  <span>By <strong>{article.author}</strong></span>
+                  <span>{article.author ? <>By <strong>{article.author}</strong></> : article.source.name}</span>
                   <span className={styles.metaDivider} aria-hidden="true" />
-                  <time dateTime={article.publishedAt}>{article.publishedLabel}</time>
-                  <span className={styles.metaDivider} aria-hidden="true" />
-                  <span>{article.readTime}</span>
+                  <time dateTime={article.publishedAt}>{publishedLabel}</time>
+                  {article.readTimeMinutes ? (
+                    <>
+                      <span className={styles.metaDivider} aria-hidden="true" />
+                      <span>{article.readTimeMinutes} min read</span>
+                    </>
+                  ) : null}
                 </div>
                 <div className={styles.articleActions} aria-label="Article actions">
                   <button type="button">Save</button>
@@ -53,39 +57,29 @@ export function NewsDetails({ article }: NewsDetailsProps) {
                   priority
                   sizes="(max-width: 760px) calc(100vw - 28px), (max-width: 1100px) 64vw, 760px"
                   src={article.imageUrl}
+                  unoptimized
                 />
               </div>
-              <figcaption>
-                <span>{article.imageCaption}</span>
-                <span>Photo: {article.imageCredit}</span>
-              </figcaption>
             </figure>
 
             <section className={styles.biasDistribution} aria-labelledby="bias-distribution-heading">
               <div className={styles.sectionLabel}>
-                <h2 id="bias-distribution-heading">Bias Distribution</h2>
+                <h2 id="bias-distribution-heading">AI-estimated framing</h2>
                 <Icon name="info" size={15} />
               </div>
               <BiasMeter
-                center={article.center}
+                center={article.analysis.centerPercentage}
                 compact
-                left={article.left}
-                right={article.right}
+                left={article.analysis.leftPercentage}
+                right={article.analysis.rightPercentage}
                 showScale={false}
               />
-              <p>{article.sourceCount} sources</p>
+              <p>Analysis of this {article.source.name} article</p>
             </section>
 
             <div className={styles.articleBody}>
-              {article.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+              {article.body.map((paragraph, index) => <p key={`${article.id}-${index}`}>{paragraph}</p>)}
             </div>
-
-            <section className={styles.relatedSection} aria-labelledby="related-stories-heading">
-              <h2 id="related-stories-heading">Related Stories</h2>
-              <div className={styles.relatedGrid}>
-                {article.relatedStories.map((story) => <RelatedStoryCard key={story.id} story={story} />)}
-              </div>
-            </section>
           </article>
 
           <AnalysisSidebar article={article} />
@@ -97,4 +91,13 @@ export function NewsDetails({ article }: NewsDetailsProps) {
       <HomeFooter />
     </div>
   );
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(new Date(value));
 }

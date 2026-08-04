@@ -1,19 +1,18 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { NewsDetails } from "@/components/news/news-details";
-import { getPreviewArticle, getPreviewArticleSlugs } from "@/lib/news/preview-articles";
+import { getAnalyzedArticleBySlug } from "@/lib/supabase/queries/articles";
 
 type NewsPageProps = {
   params: Promise<{ slug: string }>;
 };
 
-export function generateStaticParams() {
-  return getPreviewArticleSlugs().map((slug) => ({ slug }));
-}
+const getArticle = cache((slug: string) => getAnalyzedArticleBySlug(slug));
 
 export async function generateMetadata({ params }: NewsPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const article = getPreviewArticle(slug);
+  const article = await getArticle(slug);
 
   if (!article) {
     return { title: "Article not found" };
@@ -27,7 +26,7 @@ export async function generateMetadata({ params }: NewsPageProps): Promise<Metad
 
 export default async function NewsPage({ params }: NewsPageProps) {
   const { slug } = await params;
-  const article = getPreviewArticle(slug);
+  const article = await getArticle(slug);
 
   if (!article) {
     notFound();
