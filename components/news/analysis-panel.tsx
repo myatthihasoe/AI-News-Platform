@@ -1,20 +1,19 @@
 import { Icon } from "@/components/design-system/icons";
-import type { NewsArticleDetail } from "@/lib/news/preview-articles";
+import type { ArticleDetail } from "@/lib/supabase/dto";
 import styles from "./news-details.module.css";
 
 type AnalysisSidebarProps = {
-  article: NewsArticleDetail;
+  article: ArticleDetail;
 };
 
 type MeterRowProps = {
   label: "Left" | "Center" | "Right";
   value: number;
-  count?: number;
 };
 
 export function AnalysisSidebar({ article }: AnalysisSidebarProps) {
   const confidence = Math.round(article.analysis.confidence * 100);
-  const framingLabel = article.analysis.framingLabel;
+  const framingLabel = article.analysis.biasLabel;
   const framingPercentage = getFramingPercentage(article);
   const framingClass = {
     left: styles.overallBiasLeft,
@@ -30,31 +29,32 @@ export function AnalysisSidebar({ article }: AnalysisSidebarProps) {
         <PanelHeading id="bias-analysis-heading">Bias Analysis</PanelHeading>
         <p className={styles.overline}>AI-estimated overall framing</p>
         <p className={`${styles.overallBias} ${framingClass}`}>{capitalize(framingLabel)} {framingPercentage}%</p>
-        <p className={styles.basedOn}>Based on {article.sourceCount} balanced sources</p>
+        <p className={styles.basedOn}>Based on the language in this {article.source.name} article</p>
         <div className={styles.analysisDivider} />
         <div className={styles.meterRows}>
-          <MeterRow label="Left" value={article.left} />
-          <MeterRow label="Center" value={article.center} />
-          <MeterRow label="Right" value={article.right} />
+          <MeterRow label="Left" value={article.analysis.leftPercentage} />
+          <MeterRow label="Center" value={article.analysis.centerPercentage} />
+          <MeterRow label="Right" value={article.analysis.rightPercentage} />
         </div>
         <p className={styles.confidence}><strong>{confidence}% confidence</strong> in this AI estimate</p>
-        <p className={styles.explainer}>Our analysis compares the political framing of the story across publications. Sources are weighted by reliability and recency.</p>
+        <p className={styles.explainer}>This estimate reflects wording, emphasis, and framing found in the stored article text. It is not an objective judgment of the publication.</p>
         <button className={styles.outlineButton} type="button">How We Analyze Bias</button>
       </section>
 
       <section className={styles.analysisCard} aria-labelledby="ai-summary-heading">
         <PanelHeading id="ai-summary-heading">AI Summary</PanelHeading>
         <p className={styles.generatedMeta}>
-          Generated <time dateTime={article.analysis.generatedAt}>{article.analysis.generatedLabel}</time>
-          <span aria-hidden="true"> · </span>{article.analysis.readTime}
+          Generated <time dateTime={article.analysis.generatedAt}>{formatDate(article.analysis.generatedAt)}</time>
         </p>
-        <ul className={styles.summaryList}>
-          {article.analysis.summaryPoints.map((point) => <li key={point}>{point}</li>)}
-        </ul>
+        <p className={styles.summaryText}>{article.analysis.summary}</p>
         <div className={styles.analysisDetails}>
           <div className={styles.detailRow}>
             <span>Sentiment</span>
             <strong>{capitalize(article.analysis.sentimentLabel)} ({article.analysis.sentimentScore.toFixed(2)})</strong>
+          </div>
+          <div className={styles.detailRow}>
+            <span>Bias score</span>
+            <strong>{article.analysis.biasScore.toFixed(2)}</strong>
           </div>
           <div>
             <h3>Framing notes</h3>
@@ -62,9 +62,13 @@ export function AnalysisSidebar({ article }: AnalysisSidebarProps) {
           </div>
           <div>
             <h3>Loaded terms</h3>
-            <ul className={styles.termList} aria-label="Loaded terms">
-              {article.analysis.loadedTerms.map((term) => <li key={term}>{term}</li>)}
-            </ul>
+            {article.analysis.loadedTerms.length > 0 ? (
+              <ul className={styles.termList} aria-label="Loaded terms">
+                {article.analysis.loadedTerms.map((term) => <li key={term}>{term}</li>)}
+              </ul>
+            ) : (
+              <p className={styles.emptyTerms}>None detected.</p>
+            )}
           </div>
           <p className={styles.modelLabel}>Model: {article.analysis.model}</p>
         </div>
@@ -73,26 +77,20 @@ export function AnalysisSidebar({ article }: AnalysisSidebarProps) {
         <button className={`${styles.outlineButton} ${styles.compactButton}`} type="button">Provide Feedback</button>
       </section>
 
-      <section className={styles.analysisCard} aria-labelledby="source-breakdown-heading">
-        <PanelHeading id="source-breakdown-heading">Source Breakdown</PanelHeading>
-        <p className={styles.totalSources}>{article.sourceCount} Total Sources</p>
-        <div className={`${styles.meterRows} ${styles.sourceMeters}`}>
-          <MeterRow label="Left" value={article.left} count={article.sourceBreakdown.leftCount} />
-          <MeterRow label="Center" value={article.center} count={article.sourceBreakdown.centerCount} />
-          <MeterRow label="Right" value={article.right} count={article.sourceBreakdown.rightCount} />
+      <section className={styles.analysisCard} aria-labelledby="article-source-heading">
+        <PanelHeading id="article-source-heading">Article Source</PanelHeading>
+        <div className={styles.sourceCard}>
+          <strong>{article.source.name}</strong>
+          <span>Published {formatDate(article.publishedAt)}</span>
+          <a
+            className={styles.sourceLink}
+            href={article.canonicalUrl || article.originalUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Read original article
+          </a>
         </div>
-        <div className={styles.sourceListHeading} aria-hidden="true">
-          <span>Top Sources</span><span>Bias</span>
-        </div>
-        <ul className={styles.sourceList}>
-          {article.sourceBreakdown.topSources.map((source) => (
-            <li key={source.name}>
-              <span>{source.name}</span>
-              <span className={styles[`framing${capitalize(source.framing)}`]}>{capitalize(source.framing)}</span>
-            </li>
-          ))}
-        </ul>
-        <button className={styles.outlineButton} type="button">View All Sources</button>
       </section>
     </aside>
   );
@@ -107,13 +105,13 @@ function PanelHeading({ children, id }: { children: React.ReactNode; id: string 
   );
 }
 
-function MeterRow({ label, value, count }: MeterRowProps) {
+function MeterRow({ label, value }: MeterRowProps) {
   const labelClass = styles[`meterValue${label}`];
 
   return (
     <div className={styles.meterRow}>
       <span>{label}</span>
-      <strong className={labelClass}>{count === undefined ? `${value}%` : `${count} (${value}%)`}</strong>
+      <strong className={labelClass}>{value}%</strong>
       <span className={styles.miniTrack} aria-hidden="true">
         <span className={styles[`miniFill${label}`]} style={{ width: `${value}%` }} />
       </span>
@@ -125,15 +123,28 @@ function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function getFramingPercentage(article: NewsArticleDetail) {
-  switch (article.analysis.framingLabel) {
+function getFramingPercentage(article: ArticleDetail) {
+  switch (article.analysis.biasLabel) {
     case "left":
-      return article.left;
+      return article.analysis.leftPercentage;
     case "center":
-      return article.center;
+      return article.analysis.centerPercentage;
     case "right":
-      return article.right;
+      return article.analysis.rightPercentage;
     default:
-      return Math.max(article.left, article.center, article.right);
+      return Math.max(
+        article.analysis.leftPercentage,
+        article.analysis.centerPercentage,
+        article.analysis.rightPercentage,
+      );
   }
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(new Date(value));
 }

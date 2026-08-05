@@ -2,6 +2,18 @@
 .main { width: min(calc(100% - 48px), 1240px); margin-inline: auto; padding: 30px 0 0; }
 .heading { margin: 0 0 16px; font-size: 25px; font-weight: 600; line-height: 1.25; letter-spacing: -0.035em; }
 .newsGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 24px; }
+.emptyState {
+  min-height: 260px;
+  display: grid;
+  place-content: center;
+  padding: 40px 24px;
+  border: 1px solid #d0d2d5;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .5);
+  text-align: center;
+}
+.emptyState h2 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.025em; }
+.emptyState p { max-width: 440px; margin: 9px 0 0; color: #62656b; font-size: 12px; line-height: 1.55; }
 
 @media (max-width: 1024px) {
   .newsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
