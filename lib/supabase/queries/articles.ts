@@ -112,6 +112,13 @@ export type NewArticleInput = Pick<
 
 export type PendingAnalysisArticle = Omit<PendingArticleRow, "analysis">;
 
+export class DuplicateArticleError extends Error {
+  constructor(url: string) {
+    super(`Article already exists: ${url}`);
+    this.name = "DuplicateArticleError";
+  }
+}
+
 export async function insertArticle(input: NewArticleInput): Promise<Tables<"articles">> {
   const { data, error } = await getSupabaseServiceClient()
     .from("articles")
@@ -120,6 +127,10 @@ export async function insertArticle(input: NewArticleInput): Promise<Tables<"art
     .single();
 
   if (error) {
+    if (error.code === "23505") {
+      throw new DuplicateArticleError(input.original_url);
+    }
+
     throwSupabaseError(`Unable to insert article ${input.original_url}`, error);
   }
 
