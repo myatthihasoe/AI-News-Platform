@@ -31,6 +31,18 @@ export async function writeLog(entry: NewLogEntry): Promise<Tables<"logs">> {
   return data;
 }
 
+export async function writeLogs(entries: NewLogEntry[]): Promise<void> {
+  if (entries.length === 0) {
+    return;
+  }
+
+  const { error } = await getSupabaseServiceClient().from("logs").insert(entries);
+
+  if (error) {
+    throwSupabaseError("Unable to write scrape logs", error);
+  }
+}
+
 export async function getRecentLogs(filters: LogFilters = {}): Promise<Tables<"logs">[]> {
   const limit = clampInteger(filters.limit ?? DEFAULT_LOG_LIMIT, 1, MAX_LOG_LIMIT);
   let query = getSupabaseServiceClient()
