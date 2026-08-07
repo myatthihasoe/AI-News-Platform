@@ -39,7 +39,7 @@ export async function writeLogs(entries: NewLogEntry[]): Promise<void> {
   const { error } = await getSupabaseServiceClient().from("logs").insert(entries);
 
   if (error) {
-    throwSupabaseError("Unable to write scrape logs", error);
+    throwSupabaseError("Unable to write pipeline logs", error);
   }
 }
 

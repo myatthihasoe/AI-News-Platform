@@ -9,6 +9,13 @@ export type SaveArticleAnalysisInput = Omit<
   "id" | "article_id" | "bias_score" | "created_at" | "updated_at"
 >;
 
+export class ArticleAlreadyAnalyzedError extends Error {
+  constructor(articleId: number) {
+    super(`Article ${articleId} already has an analysis.`);
+    this.name = "ArticleAlreadyAnalyzedError";
+  }
+}
+
 export async function saveArticleAnalysis(
   articleId: number,
   input: SaveArticleAnalysisInput,
@@ -23,6 +30,10 @@ export async function saveArticleAnalysis(
     .single();
 
   if (error) {
+    if (error.code === "23505") {
+      throw new ArticleAlreadyAnalyzedError(articleId);
+    }
+
     throwSupabaseError(`Unable to save analysis for article ${articleId}`, error);
   }
 

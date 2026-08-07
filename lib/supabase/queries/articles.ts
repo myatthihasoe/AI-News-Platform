@@ -9,6 +9,7 @@ const DEFAULT_FEED_LIMIT = 30;
 const MAX_FEED_LIMIT = 100;
 const URL_FILTER_CHUNK_SIZE = 15;
 const PENDING_PAGE_SIZE = 100;
+const MAX_PENDING_ANALYSIS_LIMIT = 500;
 
 const articleJoinSelection = `
   id,
@@ -111,6 +112,12 @@ export type NewArticleInput = Pick<
   >;
 
 export type PendingAnalysisArticle = Omit<PendingArticleRow, "analysis">;
+
+export type PendingAnalysisQuery = {
+  limit?: number;
+  articleIds?: readonly number[];
+  excludeArticleIds?: ReadonlySet<number>;
+};
 
 export class DuplicateArticleError extends Error {
   constructor(url: string) {
@@ -225,13 +232,21 @@ export async function getAnalyzedArticleBySlug(slug: string): Promise<ArticleDet
   };
 }
 
-export async function getPendingAnalysisArticles(limit = 100): Promise<PendingAnalysisArticle[]> {
-  const boundedLimit = clampInteger(limit, 1, 500);
+export async function getPendingAnalysisArticles(
+  options: PendingAnalysisQuery = {},
+): Promise<PendingAnalysisArticle[]> {
+  const boundedLimit = clampInteger(options.limit ?? 100, 1, MAX_PENDING_ANALYSIS_LIMIT);
+  const selectedIds = options.articleIds ? [...new Set(options.articleIds)] : undefined;
+
+  if (selectedIds?.length === 0) {
+    return [];
+  }
+
   const pending: PendingAnalysisArticle[] = [];
   let offset = 0;
 
   while (pending.length < boundedLimit) {
-    const { data, error } = await getSupabaseServiceClient()
+    let query = getSupabaseServiceClient()
       .from("articles")
       .select(`
         id,
@@ -242,8 +257,13 @@ export async function getPendingAnalysisArticles(limit = 100): Promise<PendingAn
         analysis:article_analyses (id)
       `)
       .order("created_at", { ascending: true })
-      .order("id", { ascending: true })
-      .range(offset, offset + PENDING_PAGE_SIZE - 1);
+      .order("id", { ascending: true });
+
+    if (selectedIds) {
+      query = query.in("id", selectedIds);
+    }
+
+    const { data, error } = await query.range(offset, offset + PENDING_PAGE_SIZE - 1);
 
     if (error) {
       throwSupabaseError("Unable to load pending-analysis articles", error);
@@ -252,7 +272,7 @@ export async function getPendingAnalysisArticles(limit = 100): Promise<PendingAn
     const rows = (data ?? []) as unknown as PendingArticleRow[];
 
     for (const row of rows) {
-      if (row.analysis === null) {
+      if (row.analysis === null && !options.excludeArticleIds?.has(row.id)) {
         pending.push({
           id: row.id,
           source_id: row.source_id,
