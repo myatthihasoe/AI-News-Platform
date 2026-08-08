@@ -6,6 +6,8 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
+export type Vector = number[] | string;
+
 export type Database = {
   public: {
     Tables: {
@@ -130,6 +132,7 @@ export type Database = {
           loaded_terms: string[];
           disclaimer: string;
           model: string;
+          embedding: Vector | null;
           created_at: string;
           updated_at: string;
         };
@@ -149,6 +152,7 @@ export type Database = {
           loaded_terms?: string[];
           disclaimer: string;
           model: string;
+          embedding?: Vector | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -168,6 +172,7 @@ export type Database = {
           loaded_terms?: string[];
           disclaimer?: string;
           model?: string;
+          embedding?: Vector | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -322,7 +327,30 @@ export type Database = {
       };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      match_related_articles: {
+        Args: {
+          p_article_id: number;
+          p_query_embedding: Vector;
+          p_match_count?: number;
+        };
+        Returns: {
+          id: number;
+          slug: string;
+          title: string;
+          image_url: string;
+          image_alt: string | null;
+          category: string | null;
+          region: string | null;
+          published_at: string;
+          read_time_minutes: number | null;
+          source_id: number;
+          source_name: string;
+          source_logo_url: string | null;
+          similarity: number;
+        }[];
+      };
+    };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
   };

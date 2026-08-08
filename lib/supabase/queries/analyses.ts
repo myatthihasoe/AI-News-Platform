@@ -6,8 +6,22 @@ import type { Tables, TablesInsert } from "../types";
 
 export type SaveArticleAnalysisInput = Omit<
   TablesInsert<"article_analyses">,
-  "id" | "article_id" | "bias_score" | "created_at" | "updated_at"
->;
+  "id" | "article_id" | "bias_score" | "created_at" | "updated_at" | "embedding"
+> & { embedding: number[] };
+
+export class ArticleAnalysisAlreadyExistsError extends Error {
+  constructor(articleId: number) {
+    super(`Analysis already exists for article ${articleId}.`);
+    this.name = "ArticleAnalysisAlreadyExistsError";
+  }
+}
+
+export class ArticleEmbeddingAlreadyExistsError extends Error {
+  constructor(articleId: number) {
+    super(`Embedding already exists for article ${articleId}.`);
+    this.name = "ArticleEmbeddingAlreadyExistsError";
+  }
+}
 
 export async function saveArticleAnalysis(
   articleId: number,
@@ -23,6 +37,10 @@ export async function saveArticleAnalysis(
     .single();
 
   if (error) {
+    if (error.code === "23505") {
+      throw new ArticleAnalysisAlreadyExistsError(articleId);
+    }
+
     throwSupabaseError(`Unable to save analysis for article ${articleId}`, error);
   }
 
@@ -37,6 +55,39 @@ export async function saveArticleAnalysis(
   }
 
   return data;
+}
+
+export async function saveArticleEmbedding(articleId: number, embedding: number[]): Promise<void> {
+  validateEmbedding(embedding);
+
+  const client = getSupabaseServiceClient();
+  const { data, error } = await client
+    .from("article_analyses")
+    .update({ embedding })
+    .eq("article_id", articleId)
+    .is("embedding", null)
+    .select("id")
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throwSupabaseError(`Unable to save embedding for article ${articleId}`, error);
+  }
+
+  if (!data) {
+    throw new ArticleEmbeddingAlreadyExistsError(articleId);
+  }
+
+  const analyzedAt = new Date().toISOString();
+  const { error: articleError } = await client
+    .from("articles")
+    .update({ analyzed_at: analyzedAt, updated_at: analyzedAt })
+    .eq("id", articleId)
+    .is("analyzed_at", null);
+
+  if (articleError) {
+    throwSupabaseError(`Embedding saved but article ${articleId} could not be marked analyzed`, articleError);
+  }
 }
 
 export async function markArticleAnalyzed(articleId: number, analyzedAt = new Date()): Promise<void> {
@@ -68,5 +119,13 @@ function validateAnalysis(input: SaveArticleAnalysisInput) {
 
   if (!Number.isFinite(input.confidence) || input.confidence < 0 || input.confidence > 1) {
     throw new Error("Analysis confidence must be between 0 and 1.");
+  }
+
+  validateEmbedding(input.embedding);
+}
+
+function validateEmbedding(embedding: readonly number[]) {
+  if (embedding.length !== 1536 || embedding.some((value) => !Number.isFinite(value))) {
+    throw new Error("Article embedding must contain 1536 finite numbers.");
   }
 }

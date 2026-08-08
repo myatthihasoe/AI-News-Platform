@@ -1,9 +1,15 @@
 import "server-only";
 
 import { getSupabaseServiceClient } from "../client";
-import type { ArticleAnalysisDto, ArticleDetail, ArticleFeedItem, ArticleSourceDto } from "../dto";
+import type {
+  ArticleAnalysisDto,
+  ArticleDetail,
+  ArticleFeedItem,
+  ArticleSourceDto,
+  RelatedArticleDto,
+} from "../dto";
 import { throwSupabaseError } from "../errors";
-import type { Tables, TablesInsert } from "../types";
+import type { Database, Tables, TablesInsert, Vector } from "../types";
 
 const DEFAULT_FEED_LIMIT = 30;
 const MAX_FEED_LIMIT = 100;
@@ -91,8 +97,10 @@ type PendingArticleRow = Pick<
   Tables<"articles">,
   "id" | "source_id" | "title" | "raw_text" | "published_at"
 > & {
-  analysis: { id: number } | null;
+  analysis: { id: number; embedding: Vector | null } | null;
 };
+
+type RelatedArticleRow = Database["public"]["Functions"]["match_related_articles"]["Returns"][number];
 
 export type NewArticleInput = Pick<
   TablesInsert<"articles">,
@@ -111,6 +119,17 @@ export type NewArticleInput = Pick<
   >;
 
 export type PendingAnalysisArticle = Omit<PendingArticleRow, "analysis">;
+
+export type AnalysisWorkItem = PendingAnalysisArticle & {
+  kind: "full_analysis" | "embedding_backfill" | "complete";
+};
+
+export type AnalysisWorkOptions = {
+  limit?: number;
+  articleIds?: readonly number[];
+  excludeArticleIds?: ReadonlySet<number>;
+  includeCompleted?: boolean;
+};
 
 export class DuplicateArticleError extends Error {
   constructor(url: string) {
@@ -225,13 +244,18 @@ export async function getAnalyzedArticleBySlug(slug: string): Promise<ArticleDet
   };
 }
 
-export async function getPendingAnalysisArticles(limit = 100): Promise<PendingAnalysisArticle[]> {
-  const boundedLimit = clampInteger(limit, 1, 500);
-  const pending: PendingAnalysisArticle[] = [];
+export async function getAnalysisWorkItems(
+  options: AnalysisWorkOptions = {},
+): Promise<AnalysisWorkItem[]> {
+  const boundedLimit = clampInteger(options.limit ?? 100, 1, 500);
+  const workItems: AnalysisWorkItem[] = [];
+  const selectedIds = options.articleIds
+    ? [...new Set(options.articleIds)].slice(0, 100)
+    : null;
   let offset = 0;
 
-  while (pending.length < boundedLimit) {
-    const { data, error } = await getSupabaseServiceClient()
+  while (workItems.length < boundedLimit) {
+    let query = getSupabaseServiceClient()
       .from("articles")
       .select(`
         id,
@@ -239,31 +263,50 @@ export async function getPendingAnalysisArticles(limit = 100): Promise<PendingAn
         title,
         raw_text,
         published_at,
-        analysis:article_analyses (id)
+        analysis:article_analyses (id, embedding)
       `)
       .order("created_at", { ascending: true })
       .order("id", { ascending: true })
       .range(offset, offset + PENDING_PAGE_SIZE - 1);
 
+    if (selectedIds) {
+      query = query.in("id", selectedIds);
+    }
+
+    const { data, error } = await query;
+
     if (error) {
-      throwSupabaseError("Unable to load pending-analysis articles", error);
+      throwSupabaseError("Unable to load article analysis work", error);
     }
 
     const rows = (data ?? []) as unknown as PendingArticleRow[];
 
     for (const row of rows) {
-      if (row.analysis === null) {
-        pending.push({
-          id: row.id,
-          source_id: row.source_id,
-          title: row.title,
-          raw_text: row.raw_text,
-          published_at: row.published_at,
-        });
+      if (options.excludeArticleIds?.has(row.id)) {
+        continue;
+      }
 
-        if (pending.length === boundedLimit) {
-          break;
-        }
+      const kind = row.analysis === null
+        ? "full_analysis"
+        : row.analysis.embedding === null
+          ? "embedding_backfill"
+          : "complete";
+
+      if (kind === "complete" && !options.includeCompleted) {
+        continue;
+      }
+
+      workItems.push({
+        id: row.id,
+        source_id: row.source_id,
+        title: row.title,
+        raw_text: row.raw_text,
+        published_at: row.published_at,
+        kind,
+      });
+
+      if (workItems.length === boundedLimit) {
+        break;
       }
     }
 
@@ -274,7 +317,82 @@ export async function getPendingAnalysisArticles(limit = 100): Promise<PendingAn
     offset += PENDING_PAGE_SIZE;
   }
 
-  return pending;
+  return workItems;
+}
+
+export async function getPendingAnalysisArticles(limit = 100): Promise<PendingAnalysisArticle[]> {
+  const items = await getAnalysisWorkItems({ limit });
+  return items.map((item) => ({
+    id: item.id,
+    source_id: item.source_id,
+    title: item.title,
+    raw_text: item.raw_text,
+    published_at: item.published_at,
+  }));
+}
+
+export async function getArticleEmbedding(articleId: number): Promise<number[] | null> {
+  if (!Number.isSafeInteger(articleId) || articleId <= 0) {
+    throw new Error("Article ID must be a positive safe integer.");
+  }
+
+  const { data, error } = await getSupabaseServiceClient()
+    .from("article_analyses")
+    .select("embedding")
+    .eq("article_id", articleId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throwSupabaseError(`Unable to load embedding for article ${articleId}`, error);
+  }
+
+  if (!data?.embedding) {
+    return null;
+  }
+
+  return parseDatabaseEmbedding(data.embedding, articleId);
+}
+
+export async function getRelatedArticles(
+  articleId: number,
+  embedding: readonly number[],
+): Promise<RelatedArticleDto[]> {
+  if (!Number.isSafeInteger(articleId) || articleId <= 0) {
+    throw new Error("Article ID must be a positive safe integer.");
+  }
+  validateEmbedding(embedding);
+
+  const { data, error } = await getSupabaseServiceClient().rpc("match_related_articles", {
+    p_article_id: articleId,
+    p_query_embedding: [...embedding],
+    p_match_count: 5,
+  });
+
+  if (error) {
+    throwSupabaseError(`Unable to load related articles for ${articleId}`, error);
+  }
+
+  return (data ?? [])
+    .filter(isValidRelatedArticleRow)
+    .slice(0, 5)
+    .map((row) => ({
+      id: row.id,
+      slug: row.slug,
+      title: row.title,
+      imageUrl: row.image_url,
+      imageAlt: row.image_alt?.trim() || row.title,
+      category: row.category,
+      region: row.region,
+      publishedAt: row.published_at,
+      readTimeMinutes: row.read_time_minutes,
+      source: {
+        id: row.source_id,
+        name: row.source_name,
+        logoUrl: row.source_logo_url,
+      },
+      similarity: row.similarity,
+    }));
 }
 
 function mapFeedItem(row: JoinedArticleRow): ArticleFeedItem | null {
@@ -364,4 +482,60 @@ function isString(value: string | null): value is string {
 
 function isValidSlug(value: string) {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
+}
+
+function parseDatabaseEmbedding(value: Vector, articleId: number): number[] {
+  let parsed: unknown = value;
+
+  if (typeof value === "string") {
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      throw new Error(`Stored embedding for article ${articleId} is malformed.`);
+    }
+  }
+
+  if (!Array.isArray(parsed)) {
+    throw new Error(`Stored embedding for article ${articleId} is malformed.`);
+  }
+
+  validateEmbedding(parsed);
+  return parsed;
+}
+
+function validateEmbedding(value: readonly unknown[]): asserts value is number[] {
+  if (value.length !== 1536 || value.some((item) => typeof item !== "number" || !Number.isFinite(item))) {
+    throw new Error("Article embedding must contain 1536 finite numbers.");
+  }
+}
+
+function isValidRelatedArticleRow(row: unknown): row is RelatedArticleRow {
+  if (!row || typeof row !== "object") return false;
+  const candidate = row as Record<string, unknown>;
+
+  return Number.isSafeInteger(candidate.id)
+    && Number(candidate.id) > 0
+    && Number.isSafeInteger(candidate.source_id)
+    && Number(candidate.source_id) > 0
+    && isNonemptyString(candidate.slug)
+    && isNonemptyString(candidate.title)
+    && isNonemptyString(candidate.image_url)
+    && isNonemptyString(candidate.source_name)
+    && typeof candidate.published_at === "string"
+    && !Number.isNaN(new Date(candidate.published_at).getTime())
+    && typeof candidate.similarity === "number"
+    && Number.isFinite(candidate.similarity)
+    && isNullableString(candidate.image_alt)
+    && isNullableString(candidate.category)
+    && isNullableString(candidate.region)
+    && isNullableString(candidate.source_logo_url)
+    && (candidate.read_time_minutes === null || Number.isSafeInteger(candidate.read_time_minutes));
+}
+
+function isNonemptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
 }

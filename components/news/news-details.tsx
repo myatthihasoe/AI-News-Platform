@@ -3,16 +3,18 @@ import { BiasMeter } from "@/components/design-system/primitives";
 import { Icon } from "@/components/design-system/icons";
 import { HomeFooter } from "@/components/home/home-footer";
 import { HomeHeader } from "@/components/home/home-header";
-import type { ArticleDetail } from "@/lib/supabase/dto";
+import type { ArticleDetail, RelatedArticleDto } from "@/lib/supabase/dto";
 import { AnalysisSidebar } from "./analysis-panel";
 import { NewsletterBanner } from "./newsletter-banner";
+import { RelatedArticles } from "./related-articles";
 import styles from "./news-details.module.css";
 
 type NewsDetailsProps = {
   article: ArticleDetail;
+  relatedArticles: readonly RelatedArticleDto[];
 };
 
-export function NewsDetails({ article }: NewsDetailsProps) {
+export function NewsDetails({ article, relatedArticles }: NewsDetailsProps) {
   const publishedLabel = formatDate(article.publishedAt);
   const eyebrow = [article.category, article.region].filter(Boolean).join(" · ") || article.source.name;
 
@@ -85,6 +87,7 @@ export function NewsDetails({ article }: NewsDetailsProps) {
           <AnalysisSidebar article={article} />
         </div>
 
+        <RelatedArticles articles={relatedArticles} />
         <NewsletterBanner />
       </main>
 

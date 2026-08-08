@@ -39,6 +39,11 @@ export type ArticleFeedItem = {
   analysis: ArticleAnalysisDto;
 };
 
+export type RelatedArticleDto = Omit<ArticleFeedItem, "analysis" | "source"> & {
+  source: Pick<ArticleSourceDto, "id" | "name" | "logoUrl">;
+  similarity: number;
+};
+
 export type ArticleDetail = ArticleFeedItem & {
   author: string | null;
   originalUrl: string;

@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { NewsDetails } from "@/components/news/news-details";
-import { getAnalyzedArticleBySlug } from "@/lib/supabase/queries/articles";
+import {
+  getAnalyzedArticleBySlug,
+  getArticleEmbedding,
+  getRelatedArticles,
+} from "@/lib/supabase/queries/articles";
 
 type NewsPageProps = {
   params: Promise<{ slug: string }>;
@@ -32,5 +36,10 @@ export default async function NewsPage({ params }: NewsPageProps) {
     notFound();
   }
 
-  return <NewsDetails article={article} />;
+  const embedding = await getArticleEmbedding(article.id);
+  const relatedArticles = embedding
+    ? await getRelatedArticles(article.id, embedding)
+    : [];
+
+  return <NewsDetails article={article} relatedArticles={relatedArticles} />;
 }
